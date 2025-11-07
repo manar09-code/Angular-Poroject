@@ -3,7 +3,19 @@ import customtkinter as ctk  # pour des interfaces modernes
 from tkinter import messagebox  # affichage de boites de dialogue 
 from PIL import Image, ImageTk  # manipulation d'images
 import p2  # votre fichier p2.py avec la fonction main()
-
+import mysql.connector
+def connexion_db():
+    try:
+        conn = mysql.connector.connect(
+            host="localhost",
+            user="root",         
+            password="",         
+            database="reservation_sportive"
+        )
+        return conn
+    except mysql.connector.Error as err:
+        print(f"Erreur de connexion MySQL : {err}")
+        return None
 # Fonction de validation
 def valider():
     utilisateur = entry_user.get().strip()
@@ -11,10 +23,39 @@ def valider():
     
     if utilisateur == "" or mot_de_passe == "":
         messagebox.showerror("Erreur", "Veuillez remplir tous les champs.")
-    else:
-        messagebox.showinfo("Connexion réussie", f"Bienvenue {utilisateur} !")
-        fenetre.destroy()  # fermer la fenêtre de connexion
-        p2.main()  # ouvrir la fenêtre de p2.py
+        return
+    
+    conn = connexion_db()
+    if conn is None:
+        messagebox.showerror("Erreur", "Connexion à la base de données échouée.")
+        return
+
+    cursor = conn.cursor()
+    
+    try:
+        # Vérifier si l'utilisateur existe déjà
+        cursor.execute("SELECT * FROM utilisateurs WHERE nom_utilisateur = %s", (utilisateur,))
+        existing_user = cursor.fetchone()
+
+        if existing_user:
+            messagebox.showerror("Erreur", "Ce nom d'utilisateur existe déjà.")
+        else:
+            # Insérer un nouvel utilisateur
+            cursor.execute(
+                "INSERT INTO utilisateurs (nom_utilisateur, mot_de_passe) VALUES (%s, %s)",
+                (utilisateur, mot_de_passe)
+            )
+            conn.commit()
+            messagebox.showinfo("Succès", f"Utilisateur {utilisateur} enregistré avec succès !")
+
+            fenetre.destroy()
+            p2.main()
+
+    except mysql.connector.Error as err:
+        messagebox.showerror("Erreur SQL", f"Erreur : {err}")
+    finally:
+        cursor.close()
+        conn.close()
 
 # Initialisation de la fenêtre principale 
 fenetre = Tk()
