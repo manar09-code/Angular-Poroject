@@ -8,15 +8,18 @@ import mysql.connector  # ✅ Connexion MySQL (XAMPP)
 def main():
     fenetre = Tk()
     fenetre.title("Système de Réservation Sportive")
-    fenetre.geometry("1100x700")
     fenetre.configure(bg="white")
+
+    # --- ✅ FULL SCREEN SETUP ---
+    fenetre.state("zoomed")  # full-screen on Windows
+    fenetre.bind("<Escape>", lambda e: fenetre.attributes("-fullscreen", False))  # press ESC to exit fullscreen
 
     # --- DATABASE SETUP ---
     conn = mysql.connector.connect(
         host="localhost",
         user="root",
-        password="",  # Laisse vide si tu n’as pas mis de mot de passe
-        database="reservations_sportive"  # ⚠️ Vérifie que le nom de la base correspond bien à ta base phpMyAdmin
+        password="",  # laisse vide si tu n’as pas mis de mot de passe
+        database="reservations_sportive"
     )
     cursor = conn.cursor()
 
@@ -84,7 +87,7 @@ def main():
     frame_btn = Frame(fenetre, bg="white")
     frame_btn.pack(pady=20)
 
-    # --- FRAME 3 : Recherche centrée + Liste ---
+    # --- FRAME 3 : Recherche + Liste ---
     frame_search = Frame(fenetre, bg="white")
     frame_search.pack(pady=5, padx=10, fill="x")
 
@@ -146,7 +149,6 @@ def main():
                 VALUES (%s, %s, %s, %s)
             """, (nom, date_r, heure, terr))
             conn.commit()
-            print("✅ Données insérées :", nom, date_r, heure, terr)
             load_data()
             messagebox.showinfo("Succès", "Réservation ajoutée avec succès !")
             nom_entry.delete(0, END)
