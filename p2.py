@@ -21,7 +21,7 @@ def main():
     cursor = conn.cursor()
 
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS reservations (
+    CREATE TABLE IF NOT EXISTS reservations_sportive (
         id INT AUTO_INCREMENT PRIMARY KEY,
         nom VARCHAR(100),
         date_r VARCHAR(20),
@@ -107,7 +107,7 @@ def main():
                 WHERE nom LIKE %s OR date_r LIKE %s
             """, (f"%{search}%", f"%{search}%"))
         else:
-            cursor.execute("SELECT nom, date_r, heure, terrain FROM reservations")
+            cursor.execute("SELECT nom, date_r, heure, terrain FROM reservations_sportive")
         for row in cursor.fetchall():
             tree.insert("", "end", values=row)
 
@@ -130,7 +130,7 @@ def main():
     def load_data():
         for item in tree.get_children():
             tree.delete(item)
-        cursor.execute("SELECT nom, date_r, heure, terrain FROM reservations")
+        cursor.execute("SELECT nom, date_r, heure, terrain FROM reservations_sportive")
         for row in cursor.fetchall():
             tree.insert("", "end", values=row)
 
