@@ -4,6 +4,10 @@ from tkinter import messagebox  # affichage de boites de dialogue
 from PIL import Image, ImageTk  # manipulation d'images
 import p2  # votre fichier p2.py avec la fonction main()
 import mysql.connector
+import hashlib
+
+
+# --- Connexion à la base de données ---
 def connexion_db():
     try:
         conn = mysql.connector.connect(
@@ -16,7 +20,9 @@ def connexion_db():
     except mysql.connector.Error as err:
         print(f"Erreur de connexion MySQL : {err}")
         return None
-# Fonction de validation
+
+
+# --- Fonction de validation / enregistrement utilisateur ---
 def valider():
     utilisateur = entry_user.get().strip()
     mot_de_passe = entry_pass.get().strip()
@@ -25,6 +31,9 @@ def valider():
         messagebox.showerror("Erreur", "Veuillez remplir tous les champs.")
         return
     
+    # 🔒 Hachage du mot de passe avant de le stocker
+    mot_de_passe_hache = hashlib.sha256(mot_de_passe.encode()).hexdigest()
+
     conn = connexion_db()
     if conn is None:
         messagebox.showerror("Erreur", "Connexion à la base de données échouée.")
@@ -40,10 +49,10 @@ def valider():
         if existing_user:
             messagebox.showerror("Erreur", "Ce nom d'utilisateur existe déjà.")
         else:
-            # Insérer un nouvel utilisateur
+            # ✅ Insérer un nouvel utilisateur avec le mot de passe haché
             cursor.execute(
                 "INSERT INTO utilisateurs (nom_utilisateur, mot_de_passe) VALUES (%s, %s)",
-                (utilisateur, mot_de_passe)
+                (utilisateur, mot_de_passe_hache)
             )
             conn.commit()
             messagebox.showinfo("Succès", f"Utilisateur {utilisateur} enregistré avec succès !")
@@ -57,7 +66,8 @@ def valider():
         cursor.close()
         conn.close()
 
-# Initialisation de la fenêtre principale 
+
+# --- Interface Tkinter ---
 fenetre = Tk()
 fenetre.title("Connexion - Réservation sportive")
 
@@ -79,7 +89,7 @@ try:
 except:
     fenetre.configure(bg="white")
 
-# Frame principal
+# --- Frame principale ---
 frame = ctk.CTkFrame(
     fenetre,
     width=300,
@@ -99,7 +109,7 @@ label_title = ctk.CTkLabel(
 )
 label_title.place(relx=0.5, y=25, anchor="center")
 
-# Champ utilisateur
+# --- Champ utilisateur ---
 entry_user = ctk.CTkEntry(
     frame,
     width=220,
@@ -115,7 +125,7 @@ entry_user = ctk.CTkEntry(
 )
 entry_user.place(relx=0.5, y=65, anchor="center")
 
-# Champ mot de passe 
+# --- Champ mot de passe ---
 entry_pass = ctk.CTkEntry(
     frame,
     width=220,
@@ -132,7 +142,7 @@ entry_pass = ctk.CTkEntry(
 )
 entry_pass.place(relx=0.5, y=115, anchor="center")
 
-# Bouton connexion 
+# --- Bouton connexion ---
 bouton = ctk.CTkButton(
     frame,
     text="Se connecter",
