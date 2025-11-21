@@ -3,6 +3,7 @@ import customtkinter as ctk
 from tkinter import messagebox  
 from PIL import Image, ImageTk  
 import p2  # votre fichier p2.py avec la fonction main()
+<<<<<<< HEAD
 
 # --------------------------------------------------
 # FUNCTIONS
@@ -48,16 +49,68 @@ def show_login():
                   text_color="#CC0000", hover_color="#e0e0e0",
                   command=show_forgot).place(relx=0.5, y=255, anchor="center")
 
+=======
+import mysql.connector
+def connexion_db():
+    try:
+        conn = mysql.connector.connect(
+            host="localhost",
+            user="root",         
+            password="",         
+            database="reservation_sportive"
+        )
+        return conn
+    except mysql.connector.Error as err:
+        print(f"Erreur de connexion MySQL : {err}")
+        return None
+# Fonction de validation
+>>>>>>> 3436a57b00bbce9858317d3ea4f2145e54820fdd
 def valider():
     utilisateur = entry_user.get().strip()
     mot_de_passe = entry_pass.get().strip()
     
     if utilisateur == "" or mot_de_passe == "":
         messagebox.showerror("Erreur", "Veuillez remplir tous les champs.")
+<<<<<<< HEAD
     else:
         messagebox.showinfo("Connexion réussie", f"Bienvenue {utilisateur} !")
         fenetre.destroy()
         p2.main()
+=======
+        return
+    
+    conn = connexion_db()
+    if conn is None:
+        messagebox.showerror("Erreur", "Connexion à la base de données échouée.")
+        return
+
+    cursor = conn.cursor()
+    
+    try:
+        # Vérifier si l'utilisateur existe déjà
+        cursor.execute("SELECT * FROM utilisateurs WHERE nom_utilisateur = %s", (utilisateur,))
+        existing_user = cursor.fetchone()
+
+        if existing_user:
+            messagebox.showerror("Erreur", "Ce nom d'utilisateur existe déjà.")
+        else:
+            # Insérer un nouvel utilisateur
+            cursor.execute(
+                "INSERT INTO utilisateurs (nom_utilisateur, mot_de_passe) VALUES (%s, %s)",
+                (utilisateur, mot_de_passe)
+            )
+            conn.commit()
+            messagebox.showinfo("Succès", f"Utilisateur {utilisateur} enregistré avec succès !")
+
+            fenetre.destroy()
+            p2.main()
+
+    except mysql.connector.Error as err:
+        messagebox.showerror("Erreur SQL", f"Erreur : {err}")
+    finally:
+        cursor.close()
+        conn.close()
+>>>>>>> 3436a57b00bbce9858317d3ea4f2145e54820fdd
 
 # ---------------- REGISTER ----------------
 def show_register():
@@ -175,4 +228,9 @@ frame.place(relx=0.5, rely=0.5, anchor="center")
 
 show_login()
 fenetre.bind("<Return>", lambda e: valider())
+<<<<<<< HEAD
 fenetre.mainloop()
+=======
+
+fenetre.mainloop()
+>>>>>>> 3436a57b00bbce9858317d3ea4f2145e54820fdd
