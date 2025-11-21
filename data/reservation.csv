@@ -1,0 +1,15 @@
+root = ctk.CTk()
+root.title("Système de Réservation Sportive")
+tabview = ctk.CTkTabview(root)
+tabview.pack(fill="both", expand=True)
+tabview.add("Réservation")
+tabview.add("Paiement")
+tabview.add("Actualités")
+tabview.add("Statistiques")
+
+reservation_page(tabview.tab("Réservation"))
+payment_page(tabview.tab("Paiement"))
+news_page(tabview.tab("Actualités"))
+stats_page(tabview.tab("Statistiques"), reservations_list)
+
+root.mainloop()
