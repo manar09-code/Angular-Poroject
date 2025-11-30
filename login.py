@@ -14,7 +14,8 @@ fenetre.update_idletasks()
 
 # --- Background Image ---
 try:
-    image_path = os.path.join(os.path.dirname(__file__), "pictures", "background.jpg")
+    base_dir = os.path.dirname(__file__)
+    image_path = os.path.join(base_dir, "pictures", "background.jpg")
     image = Image.open(image_path)
     screen_width = fenetre.winfo_screenwidth()
     screen_height = fenetre.winfo_screenheight()
@@ -45,7 +46,9 @@ def show_login():
     
     ctk.CTkLabel(frame, text="Connexion", text_color="black", font=("Arial", 16, "bold")).place(relx=0.5, y=25, anchor="center")
 
-    global entry_user, entry_pass
+    global entry_user, entry_pass, show_pass_btn, pass_visible
+    pass_visible = False
+
     entry_user = ctk.CTkEntry(frame, width=220, height=38, placeholder_text="Nom d'utilisateur",
                               placeholder_text_color="gray", corner_radius=15,
                               fg_color="#f2f2f2", text_color="black", font=("Arial", 12))
@@ -53,9 +56,14 @@ def show_login():
 
     entry_pass = ctk.CTkEntry(frame, width=220, height=38, placeholder_text="Mot de passe",
                               placeholder_text_color="gray", show="*",
-                              corner_radius=15,
-                              fg_color="#f2f2f2", text_color="black", font=("Arial", 12))
+                              corner_radius=15, fg_color="#f2f2f2", text_color="black", font=("Arial", 12))
     entry_pass.place(relx=0.5, y=115, anchor="center")
+
+    # bouton show/hide password
+    show_pass_btn = ctk.CTkButton(frame, text="👁", width=30, height=30, fg_color="transparent",
+                                  hover_color="#e0e0e0", text_color="black",
+                                  command=toggle_password)
+    show_pass_btn.place(x=370, y=115, anchor="w")  # à droite de l'entrée
 
     ctk.CTkButton(frame, text="Se connecter", width=160, height=38,
                   corner_radius=18, fg_color="#F77F00", hover_color="#E57100",
@@ -70,6 +78,15 @@ def show_login():
                   text_color="#CC0000", hover_color="#e0e0e0",
                   command=show_forgot).place(relx=0.5, y=255, anchor="center")
 
+def toggle_password():
+    global pass_visible
+    if pass_visible:
+        entry_pass.configure(show="*")
+        pass_visible = False
+    else:
+        entry_pass.configure(show="")
+        pass_visible = True
+
 def login_action():
     user = entry_user.get().strip()
     pwd = entry_pass.get().strip()
@@ -77,8 +94,7 @@ def login_action():
         messagebox.showerror("Erreur", "Veuillez remplir tous les champs.")
         return
     messagebox.showinfo("Connexion réussie", f"Bienvenue {user} !")
-    fenetre.destroy()
-    home.main()  # opens home page
+    fenetre.after(100, lambda: (fenetre.destroy(), home.main()))  # delay to avoid pending events
 
 # ------------------ REGISTER ------------------
 def show_register():
@@ -91,6 +107,11 @@ def show_register():
     ctk.CTkLabel(frame, text="Créer un compte", text_color="black", font=("Arial", 16, "bold")).place(relx=0.5, y=25, anchor="center")
 
     global reg_name, reg_email, reg_user, reg_pass, reg_confirm
+    global pass_visible_reg, pass_visible_confirm
+
+    pass_visible_reg = False
+    pass_visible_confirm = False
+
     reg_name = ctk.CTkEntry(frame, width=220, height=38, placeholder_text="Nom complet", fg_color="#f2f2f2", text_color="black")
     reg_name.place(relx=0.5, y=65, anchor="center")
     reg_email = ctk.CTkEntry(frame, width=220, height=38, placeholder_text="Email", fg_color="#f2f2f2", text_color="black")
@@ -102,10 +123,36 @@ def show_register():
     reg_confirm = ctk.CTkEntry(frame, width=220, height=38, placeholder_text="Confirmer le mot de passe", show="*", fg_color="#f2f2f2", text_color="black")
     reg_confirm.place(relx=0.5, y=225, anchor="center")
 
+    # boutons show/hide pour reg_pass et reg_confirm
+    ctk.CTkButton(frame, text="👁", width=30, height=30, fg_color="transparent",
+                  hover_color="#e0e0e0", text_color="black",
+                  command=toggle_reg_pass).place(x=370, y=185, anchor="w")
+    ctk.CTkButton(frame, text="👁", width=30, height=30, fg_color="transparent",
+                  hover_color="#e0e0e0", text_color="black",
+                  command=toggle_reg_confirm).place(x=370, y=225, anchor="w")
+
     ctk.CTkButton(frame, text="Créer le compte", width=160, height=38,
                   corner_radius=18, fg_color="#F77F00", hover_color="#E57100",
                   text_color="white", font=("Arial", 12, "bold"),
                   command=register_action).place(relx=0.5, y=275, anchor="center")
+
+def toggle_reg_pass():
+    global pass_visible_reg
+    if pass_visible_reg:
+        reg_pass.configure(show="*")
+        pass_visible_reg = False
+    else:
+        reg_pass.configure(show="")
+        pass_visible_reg = True
+
+def toggle_reg_confirm():
+    global pass_visible_confirm
+    if pass_visible_confirm:
+        reg_confirm.configure(show="*")
+        pass_visible_confirm = False
+    else:
+        reg_confirm.configure(show="")
+        pass_visible_confirm = True
 
 def register_action():
     if not reg_name.get() or not reg_email.get() or not reg_user.get() or not reg_pass.get() or not reg_confirm.get():
