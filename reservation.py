@@ -1,17 +1,28 @@
-# reservation.py
 from tkinter import *
 from tkinter import ttk, messagebox
 from datetime import date
-from PIL import Image, ImageTk, ImageOps
+from PIL import Image, ImageTk
 import customtkinter as ctk
 import os
-import csv
-import pandas as pd
+from pymongo import MongoClient
 
 import home
 import payment
-from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import letter
+
+# ---------------- MongoDB ----------------
+try:
+    client = MongoClient(
+        "mongodb+srv://mahmoudsaadaui55_db_user:admin21@cluster0.otk3rx1.mongodb.net/sports_reservation?retryWrites=true&w=majority",
+        serverSelectionTimeoutMS=5000
+    )
+    db = client["sports_reservation"]
+    reservations_collection = db["reservations"]
+    client.server_info()  # Vérifie la connexion
+except Exception as e:
+    messagebox.showerror("Erreur DB", f"Impossible de se connecter à la base de données : {e}")
+    exit()
+
+
 def main(user=None):
     fenetre = Tk()
     fenetre.title("Système de Réservation Sportive")
@@ -21,9 +32,7 @@ def main(user=None):
 
     reservations_list = []
 
-    # ------------------------------
-    # BOUTON RETOUR
-    # ------------------------------
+    # ---------------- BOUTON RETOUR ----------------
     def go_back():
         fenetre.destroy()
         home.main(user)
@@ -41,9 +50,7 @@ def main(user=None):
     )
     btn_retour.pack(anchor="nw", padx=20, pady=20)
 
-    # ------------------------------
-    # FRAME 1 – Choix du terrain
-    # ------------------------------
+    # ---------------- FRAME 1 – Choix du terrain ----------------
     frame1_outer = LabelFrame(
         fenetre, text="Choisissez un terrain/salle",
         font=("Arial", 12, "bold"), bg="white"
@@ -70,20 +77,15 @@ def main(user=None):
     ]
 
     photo_refs = []  # garder les images en mémoire
-
-    # fonction de sélection avec surbrillance
-    selected_frame = [None]  # variable mutable pour référence
+    selected_frame = [None]  # référence pour surbrillance
 
     def select_terrain(name, frame_img):
         terrain.set(name)
-        # retirer contour des anciens
         if selected_frame[0]:
             selected_frame[0].config(highlightthickness=0)
-        # mettre contour vert
         frame_img.config(highlightbackground="green", highlightthickness=4)
         selected_frame[0] = frame_img
 
-    # création des frames terrains
     for i, (name, filename) in enumerate(terrains):
         try:
             img_path = os.path.join(os.path.dirname(__file__), "Pictures", filename)
@@ -114,7 +116,6 @@ def main(user=None):
         Label(frame_img, text=name, font=("Arial", 12, "bold"),
               bg="#F77F00", wraplength=220, justify="center").pack(pady=(2, 6))
 
-        # clic sur image ou frame sélectionne le terrain
         def make_on_click(n=name, f=frame_img):
             return lambda e: select_terrain(n, f)
 
@@ -124,226 +125,130 @@ def main(user=None):
     frame1.update_idletasks()
     canvas.config(scrollregion=canvas.bbox("all"))
 
-    # ------------------------------
-    # FRAME 2 – Formulaire
-    # ------------------------------
+    # ---------------- CONTAINER FOR FRAME 2 AND BUTTONS ----------------
+    container = Frame(fenetre, bg="white")
+    container.pack(pady=10, padx=10, fill="x")
+
+    # ---------------- FRAME 2 – Formulaire (Inputs only) ----------------
     frame2 = LabelFrame(
-        fenetre, text="Formulaire de Réservation",
+        container, text="Formulaire de Réservation",
         font=("Arial", 12, "bold"), bg="white"
     )
-    frame2.pack(pady=10, padx=10, fill="x")
-
+    frame2.pack(side=LEFT, fill="both", expand=True, padx=(0,10))
     frame2.grid_columnconfigure(1, weight=1)
 
-    Label(frame2, text="Nom complet :", font=("Arial", 11),
-          bg="white").grid(row=0, column=0, padx=10, pady=5, sticky="w")
-    nom_entry = ctk.CTkEntry(
-        frame2, width=300, height=35, corner_radius=10,
-        fg_color="#f2f2f2", text_color="black",
-        placeholder_text="Nom complet", font=("Arial", 12)
-    )
-    nom_entry.grid(row=0, column=1, padx=10, pady=5, sticky="w")
+    Label(frame2, text="Nom complet :", font=("Arial", 11), bg="white").grid(row=0, column=0, padx=10, pady=2, sticky="w")
+    nom_entry = ctk.CTkEntry(frame2, width=300, height=35, corner_radius=10, fg_color="#f2f2f2", text_color="black",
+                             placeholder_text="Nom complet", font=("Arial", 12))
+    nom_entry.grid(row=0, column=1, padx=10, pady=2, sticky="w")
 
-    Label(frame2, text="Date de réservation :", font=("Arial", 11),
-          bg="white").grid(row=1, column=0, padx=10, pady=5, sticky="w")
-    date_entry = ctk.CTkEntry(
-        frame2, width=300, height=35, corner_radius=10,
-        fg_color="#f2f2f2", text_color="black",
-        placeholder_text="JJ/MM/AAAA", font=("Arial", 12)
-    )
-    date_entry.grid(row=1, column=1, padx=10, pady=5, sticky="w")
+    Label(frame2, text="Date de réservation :", font=("Arial", 11), bg="white").grid(row=1, column=0, padx=10, pady=2, sticky="w")
+    date_entry = ctk.CTkEntry(frame2, width=300, height=35, corner_radius=10, fg_color="#f2f2f2", text_color="black",
+                              placeholder_text="JJ/MM/AAAA", font=("Arial", 12))
+    date_entry.grid(row=1, column=1, padx=10, pady=2, sticky="w")
     date_entry.insert(0, date.today().strftime("%d/%m/%Y"))
 
-    Label(frame2, text="Heure :", font=("Arial", 11),
-          bg="white").grid(row=2, column=0, padx=10, pady=5, sticky="w")
-    hours = ["08:00-10:00", "10:00-12:00", "14:00-16:00",
-             "16:00-18:00", "18:00-20:00", "20:00-22:00", "23:00-01:00"]
-    heure_combo = ctk.CTkComboBox(frame2, values=hours, width=300, height=35,
-                                  corner_radius=10, font=("Arial", 12))
-    heure_combo.grid(row=2, column=1, padx=10, pady=5, sticky="w")
+    Label(frame2, text="Heure :", font=("Arial", 11), bg="white").grid(row=2, column=0, padx=10, pady=2, sticky="w")
+    hours = ["08:00-10:00", "10:00-12:00", "14:00-16:00", "16:00-18:00", "18:00-20:00", "20:00-22:00", "23:00-01:00"]
+    heure_combo = ctk.CTkComboBox(frame2, values=hours, width=300, height=35, corner_radius=10, font=("Arial", 12))
+    heure_combo.grid(row=2, column=1, padx=10, pady=2, sticky="w")
 
-    Label(frame2, text="Forfait :", font=("Arial", 11), bg="white").grid(row=3, column=0, padx=10, pady=5, sticky="w")
+    Label(frame2, text="Forfait :", font=("Arial", 11), bg="white").grid(row=3, column=0, padx=10, pady=2, sticky="w")
     forfait_var = StringVar(value="Standard")
-    forfait_combo = ctk.CTkComboBox(frame2, values=["Standard", "Premium", "VIP"],
-                                     width=300, height=35, corner_radius=10, variable=forfait_var)
-    forfait_combo.grid(row=3, column=1, padx=10, pady=5, sticky="w")
+    forfait_combo = ctk.CTkComboBox(frame2, values=["Standard", "Premium", "VIP"], width=300, height=35,
+                                     corner_radius=10, variable=forfait_var)
+    forfait_combo.grid(row=3, column=1, padx=10, pady=2, sticky="w")
 
-    # Additional Options
-    Label(frame2, text="Options supplémentaires :", font=("Arial", 11), bg="white").grid(row=4, column=0, padx=10, pady=5, sticky="w")
-    options_frame = Frame(frame2, bg="white")
-    options_frame.grid(row=4, column=1, padx=10, pady=5, sticky="w")
+    # ---------------- FRAME 2 BUTTONS – Buttons and Options ----------------
+    frame2_buttons = LabelFrame(
+        container, text="Actions et Options",
+        font=("Arial", 12, "bold"), bg="white"
+    )
+    frame2_buttons.pack(side=RIGHT, fill="y", padx=(10,0))
+
+    # Frame boutons horizontaux
+    buttons_frame = Frame(frame2_buttons, bg="white")
+    buttons_frame.pack(pady=10)
+
+    btn_ajouter = ctk.CTkButton(buttons_frame, text="Ajouter", fg_color="#1C9273", text_color="white",
+                                corner_radius=20, height=40, font=("Arial", 12, "bold"))
+    btn_ajouter.pack(side=LEFT, padx=5, pady=5)
+
+    btn_modifier = ctk.CTkButton(buttons_frame, text="Modifier", fg_color="#F7A400", text_color="white",
+                                 corner_radius=20, height=40, font=("Arial", 12, "bold"), state="disabled")
+    btn_modifier.pack(side=LEFT, padx=5, pady=5)
+
+    btn_update = ctk.CTkButton(buttons_frame, text="Update", fg_color="#F7A400", text_color="white",
+                               corner_radius=20, height=40, font=("Arial", 12, "bold"), state="disabled")
+    btn_update.pack(side=LEFT, padx=5, pady=5)
+
+    btn_paiement = ctk.CTkButton(buttons_frame, text="Passer au Paiement", fg_color="#1C9273", text_color="white",
+                                 corner_radius=20, height=40, font=("Arial", 12, "bold"), state="disabled")
+    btn_paiement.pack(side=LEFT, padx=5, pady=5)
+
+    # Options supplémentaires
+    options_container = Frame(frame2_buttons, bg="white")
+    options_container.pack(pady=10)
+
+    Label(options_container, text="Options supplémentaires :", font=("Arial", 11), bg="white").pack(anchor="w")
+    options_frame = Frame(options_container, bg="white")
+    options_frame.pack(anchor="w")
 
     equipment_var = IntVar()
     coaching_var = IntVar()
+    abonnement_var = IntVar(value=0)
 
     ctk.CTkCheckBox(options_frame, text="Location d'équipement (+5 TND)", variable=equipment_var, text_color="black").pack(anchor="w")
     ctk.CTkCheckBox(options_frame, text="Coaching personnel (+10 TND)", variable=coaching_var, text_color="black").pack(anchor="w")
 
-    csv_file = os.path.join(os.path.dirname(__file__), "reservations.csv")
-
-    # ------------------------------
-    # FONCTIONS CRUD
-    # ------------------------------
+    # ---------------- FONCTIONS CRUD ----------------
     def find_alternatives(date_r, heure, terr):
         alternatives = []
-        # Suggest next available time for same terrain
         current_index = hours.index(heure) if heure in hours else 0
         for i in range(current_index + 1, len(hours)):
             next_heure = hours[i]
-            conflict = any(res["date"] == date_r and res["heure"] == next_heure and res["terrain"] == terr for res in reservations_list)
+            conflict = reservations_collection.find_one({"date": date_r, "heure": next_heure, "terrain": terr})
             if not conflict:
                 alternatives.append(f"{terr} à {next_heure}")
                 break
-
-        # Suggest alternative terrains at same time
         terrains_list = [t[0] for t in terrains]
         for alt_terr in terrains_list:
             if alt_terr != terr:
-                conflict = any(res["date"] == date_r and res["heure"] == heure and res["terrain"] == alt_terr for res in reservations_list)
+                conflict = reservations_collection.find_one({"date": date_r, "heure": heure, "terrain": alt_terr})
                 if not conflict:
                     alternatives.append(f"{alt_terr} à {heure}")
                     break
         return alternatives
 
-    def modifier_reservation():
-        selected = tree.selection()
-        if not selected:
-            messagebox.showwarning("Sélection", "Veuillez sélectionner une réservation à modifier.")
-            return
-        # For simplicity, just show a message
-        messagebox.showinfo("Modifier", "Fonction de modification à implémenter.")
-
-    def supprimer_reservation():
-        selected = tree.selection()
-        if not selected:
-            messagebox.showwarning("Sélection", "Veuillez sélectionner une réservation à supprimer.")
-            return
-        if messagebox.askyesno("Confirmer", "Êtes-vous sûr de vouloir supprimer cette réservation ?"):
-            item = tree.item(selected[0])
-            values = item['values']
-            # Remove from list
-            for res in reservations_list[:]:
-                if (res["nom"] == values[0] and res["date"] == values[1] and
-                    res["heure"] == values[2] and res["terrain"] == values[3]):
-                    reservations_list.remove(res)
-                    break
-            update_reservations_table()
-            messagebox.showinfo("Supprimé", "Réservation supprimée.")
-
-    def get_selected_reservation():
-        selected = tree.selection()
-        if not selected:
-            return None
-        item = tree.item(selected[0])
-        values = item['values']
-        return {
-            "nom": values[0], "date": values[1], "heure": values[2],
-            "terrain": values[3], "forfait": values[4]
-        }
-
-    # Frame boutons à droite
-    frame_btn = Frame(frame2, bg="white")
-    frame_btn.grid(row=0, column=2, rowspan=7, padx=20, sticky="n")
-
-    btn_ajouter = ctk.CTkButton(frame_btn, text="Ajouter", command=lambda: ajouter_reservation(),
-                                fg_color="#1C9273", text_color="white", corner_radius=20, height=40,
-                                font=("Arial", 12, "bold"))
-    btn_ajouter.grid(row=0, column=0, padx=5, pady=5)
-
-    btn_modifier = ctk.CTkButton(frame_btn, text="Modifier", command=lambda: modifier_reservation(),
-                                 fg_color="#F7A400", text_color="white", corner_radius=20, height=40,
-                                 font=("Arial", 12, "bold"), state="disabled")
-    btn_modifier.grid(row=0, column=1, padx=5, pady=5)
-
-    btn_supprimer = ctk.CTkButton(frame_btn, text="Supprimer", command=lambda: supprimer_reservation(),
-                                  fg_color="#D90429", text_color="white", corner_radius=20, height=40,
-                                  font=("Arial", 12, "bold"), state="disabled")
-    btn_supprimer.grid(row=0, column=2, padx=5, pady=5)
-
-    btn_paiement = ctk.CTkButton(frame_btn, text="Passer au Paiement", command=lambda: payment.main(get_selected_reservation()),
-                                 fg_color="#1C9273", text_color="white", corner_radius=20, height=40,
-                                 font=("Arial", 12, "bold"), state="disabled")
-    btn_paiement.grid(row=0, column=3, padx=5, pady=5)
-
-    abonnement_var = IntVar(value=0)
-
-    # ------------------------------
-    # FRAME 3 – Liste des réservations
-    # ------------------------------
-    frame3 = LabelFrame(
-        fenetre, text="Vos Réservations",
-        font=("Arial", 12, "bold"), bg="white"
-    )
+    # ---------------- FRAME 3 – Liste des réservations ----------------
+    frame3 = LabelFrame(fenetre, text="Vos Réservations", font=("Arial", 12, "bold"), bg="white")
     frame3.pack(pady=10, padx=10, fill="both", expand=True)
 
-    # Treeview pour afficher les réservations
     columns = ("Nom", "Date", "Heure", "Terrain", "Forfait", "Abonnement", "Équipement", "Coaching")
     tree = ttk.Treeview(frame3, columns=columns, show="headings", height=10)
     tree.pack(fill="both", expand=True, padx=10, pady=10)
 
-    # Définir les en-têtes
     for col in columns:
         tree.heading(col, text=col)
-        tree.column(col, width=100, anchor="center")
+        tree.column(col, width=120, anchor="center")
 
-    # Scrollbar verticale
     scrollbar = ttk.Scrollbar(frame3, orient="vertical", command=tree.yview)
     tree.configure(yscrollcommand=scrollbar.set)
     scrollbar.pack(side="right", fill="y")
 
-    # Enable buttons on selection
-    def on_tree_select(event):
-        selected = tree.selection()
-        if selected:
-            btn_modifier.configure(state="normal")
-            btn_supprimer.configure(state="normal")
-            btn_paiement.configure(state="normal")
-        else:
-            btn_modifier.configure(state="disabled")
-            btn_supprimer.configure(state="disabled")
-            btn_paiement.configure(state="disabled")
-
-    tree.bind("<<TreeviewSelect>>", on_tree_select)
-
-    # Fonction pour mettre à jour la liste des réservations
     def update_reservations_table():
-        # Vider la table
         for item in tree.get_children():
             tree.delete(item)
-        # Ajouter les réservations
-        for res in reservations_list:
+        query = {"user": user} if user else {}
+        for row in reservations_collection.find(query):
             tree.insert("", "end", values=(
-                res["nom"], res["date"], res["heure"], res["terrain"],
-                res["forfait"], "Oui" if res.get("abonnement", 0) else "Non",
-                "Oui" if res.get("equipment", 0) else "Non",
-                "Oui" if res.get("coaching", 0) else "Non"
+                row["nom"], row["date"], row["heure"], row["terrain"],
+                row.get("forfait", "Standard"), "Oui" if row.get("abonnement", 0) else "Non",
+                "Oui" if row.get("equipment", 0) else "Non",
+                "Oui" if row.get("coaching", 0) else "Non"
             ))
 
-    # ------------------------------
-    # CHARGEMENT CSV
-    # ------------------------------
-    if os.path.isfile(csv_file):
-        with open(csv_file, newline="", encoding="utf-8") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                res = {
-                    "nom": row["nom"],
-                    "date": row["date"],
-                    "heure": row["heure"],
-                    "terrain": row["terrain"],
-                    "forfait": row["forfait"],
-                    "abonnement": int(row["abonnement"]),
-                    "equipment": int(row.get("equipment") or 0),
-                    "coaching": int(row.get("coaching") or 0),
-                    "user": row.get("user", "")
-                }
-                if user is None or res["user"] == user:
-                    reservations_list.append(res)
-
-    # Mettre à jour la table après chargement
-    update_reservations_table()
-
-    # Mettre à jour la table après ajout d'une réservation
+    # ---------------- Ajouter réservation ----------------
     def ajouter_reservation():
         nom = nom_entry.get().strip()
         date_r = date_entry.get().strip()
@@ -358,12 +263,7 @@ def main(user=None):
             messagebox.showwarning("Champs manquants", "Veuillez remplir tous les champs.")
             return
 
-        conflict = False
-        for res in reservations_list:
-            if res["date"] == date_r and res["heure"] == heure and res["terrain"] == terr:
-                conflict = True
-                break
-
+        conflict = reservations_collection.find_one({"date": date_r, "heure": heure, "terrain": terr})
         if conflict:
             alternatives = find_alternatives(date_r, heure, terr)
             msg = f"Le terrain {terr} est déjà réservé à {heure}.\n\nSuggestions AI :\n"
@@ -372,46 +272,38 @@ def main(user=None):
                 msg += "\n\nVoulez-vous réessayer avec une alternative ?"
                 retry = messagebox.askyesno("Conflit détecté", msg)
                 if retry:
-                    return  # Allow user to change selection
+                    return
             else:
                 msg += "Aucune alternative disponible pour cette date."
                 messagebox.showerror("Indisponible", msg)
             return
 
         new_res = {
-            "nom": nom, "date": date_r, "heure": heure,
-            "terrain": terr, "forfait": forfait, "abonnement": abonnement,
+            "nom": nom, "date": date_r, "heure": heure, "terrain": terr,
+            "forfait": forfait, "abonnement": abonnement,
             "equipment": equipment, "coaching": coaching, "user": user
         }
-        reservations_list.append(new_res)
+        reservations_collection.insert_one(new_res)
+        messagebox.showinfo("Succès", "Réservation ajoutée !")
+        update_reservations_table()
 
         nom_entry.delete(0, END)
         heure_combo.set("")
         terrain.set("")
         equipment_var.set(0)
         coaching_var.set(0)
-        messagebox.showinfo("Succès", "Réservation ajoutée !")
 
-        # Mettre à jour la table
-        update_reservations_table()
-
-        # Ask to proceed to payment
         proceed = messagebox.askyesno("Paiement", "Voulez-vous procéder au paiement maintenant ?")
         if proceed:
             fenetre.destroy()
             payment.main(new_res)
 
-        file_exists = os.path.isfile(csv_file)
-        with open(csv_file, "a", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=["nom", "date", "heure", "terrain", "forfait", "abonnement", "equipment", "coaching", "user"])
-            if not file_exists:
-                writer.writeheader()
-            writer.writerow({"nom": nom, "date": date_r, "heure": heure,
-                             "terrain": terr, "forfait": forfait, "abonnement": abonnement,
-                             "equipment": equipment, "coaching": coaching, "user": user})
+    btn_ajouter.configure(command=ajouter_reservation)
 
+    # Charger initialement
+    update_reservations_table()
     fenetre.mainloop()
 
 
 if __name__ == "__main__":
-    main()
+    main("TestUser")
